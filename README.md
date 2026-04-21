@@ -3,7 +3,9 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 ## Getting Started
 
 1. Clone the Repository
+```bash
 git clone https://github.com/verinaaziz19/food-menu-service-.git
+```
 
 2. Navigate to the Folder
 ```bash
