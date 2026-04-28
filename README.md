@@ -2,8 +2,22 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
-First, run the development server:
+1. Clone the Repository
+```bash
+git clone https://github.com/verinaaziz19/food-menu-service-.git
+```
 
+2. Navigate to the Folder
+```bash
+cd ./food-menu-service
+```
+
+3. Install Dependencies
+```bash
+npm install
+```
+
+4. Run the Server
 ```bash
 npm run dev
 # or
@@ -14,6 +28,7 @@ pnpm dev
 bun dev
 ```
 
+5. Open the Server
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.

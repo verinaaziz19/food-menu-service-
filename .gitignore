@@ -31,11 +31,33 @@ yarn-error.log*
 .pnpm-debug.log*
 
 # env files (can opt-in for committing if needed)
-.env*
+# .env*
+.env
 
 # vercel
 .vercel
 
+ARCHITECTURE.md
+DATABASE_MAPPING.md
+
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# v0 sandbox internal files
+__v0_runtime_loader.js
+__v0_devtools.tsx
+__v0_jsx-dev-runtime.ts
+.snowflake/
+.v0-trash/
+.vercel/
+next.user-config.*
+
+# Environment variables
+.env*.local
+
+# Common ignores
+node_modules
+.next/
+.DS_Store
