@@ -1,10 +1,26 @@
 'use client';
 
-import { useAuth } from '@/lib/auth-context';
 import { ProtectedLayout } from '@/app/protected-layout';
-import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { useAuth } from '@/lib/auth-context';
+import type { FulfillmentType, OrderStatus } from '@/lib/auth-context';
 import { useState } from 'react';
+
+const deliveryStatusOptions: OrderStatus[] = [
+  'Active',
+  'Picked Up',
+  'On the Way',
+  'Delivered',
+  'Cancelled',
+];
+
+const pickupStatusOptions: OrderStatus[] = [
+  'Active',
+  'Ready for Pickup',
+  'Completed',
+  'Cancelled',
+];
 
 export default function OrdersPage() {
   const { user, orders, updateOrderStatus } = useAuth();
@@ -14,149 +30,182 @@ export default function OrdersPage() {
     return null;
   }
 
-  // Filter orders based on role
+  const userId = String(user.id ?? user.UserID ?? '');
   const userOrders =
     user.role === 'client'
-      ? orders.filter((order) => order.userId === user.id)
+      ? orders.filter((order) => String(order.userId ?? order.UserID) === userId)
       : orders;
+  const sortedOrders = [...userOrders].sort((left, right) => {
+    const leftDate = new Date(left.createdAt ?? left.OrderDate).getTime();
+    const rightDate = new Date(right.createdAt ?? right.OrderDate).getTime();
+    return rightDate - leftDate;
+  });
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'pending':
+      case 'Active':
         return 'bg-yellow-100 text-yellow-800';
-      case 'preparing':
+      case 'Ready for Pickup':
         return 'bg-blue-100 text-blue-800';
-      case 'ready':
-        return 'bg-purple-100 text-purple-800';
-      case 'completed':
+      case 'Picked Up':
+        return 'bg-cyan-100 text-cyan-800';
+      case 'On the Way':
+        return 'bg-indigo-100 text-indigo-800';
+      case 'Delivered':
+      case 'Completed':
         return 'bg-green-100 text-green-800';
+      case 'Cancelled':
+        return 'bg-rose-100 text-rose-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
   };
 
-  const statusOptions = ['pending', 'preparing', 'ready', 'completed'];
+  const getStatusOptions = (fulfillmentType: FulfillmentType | undefined) =>
+    fulfillmentType === 'delivery' ? deliveryStatusOptions : pickupStatusOptions;
 
   return (
     <ProtectedLayout>
-      <div className="min-h-screen bg-gradient-to-br from-amber-50 to-red-50 py-12">
+      <div className="min-h-screen bg-[linear-gradient(145deg,#f8f1e8_0%,#f3e5d8_55%,#eef5e8_100%)] py-12">
         <div className="max-w-6xl mx-auto px-4">
-          <h1 className="text-4xl font-bold text-amber-900 mb-2">
+          <h1 className="mb-2 text-4xl font-bold text-[#7a432d]">
             {user.role === 'employee' ? 'Manage Orders' : 'My Orders'}
           </h1>
-          <p className="text-amber-700 mb-8">
+          <p className="mb-8 text-[#94644f]">
             {user.role === 'employee'
               ? 'View and update the status of all orders'
-              : 'Track your orders and order history'}
+              : 'Track your pickup and delivery orders'}
           </p>
 
           {userOrders.length === 0 ? (
-            <Card className="border-2 border-amber-200 p-8 text-center">
-              <p className="text-amber-700 text-lg">
+            <Card className="border-2 border-[#e8d8c7] bg-[#fffaf4]/95 p-8 text-center">
+              <p className="text-lg text-[#94644f]">
                 {user.role === 'client'
                   ? "You haven't placed any orders yet."
                   : 'No orders yet.'}
               </p>
               <Button
-                onClick={() => window.location.href = '/dashboard'}
-                className="mt-4 bg-amber-600 hover:bg-amber-700 text-white"
+                onClick={() => {
+                  window.location.href = '/dashboard';
+                }}
+                className="mt-4 bg-[#c95a2e] text-white hover:bg-[#ab4a22]"
               >
                 Back to Dashboard
               </Button>
             </Card>
           ) : (
             <div className="grid gap-6">
-              {userOrders.map((order) => (
-                <Card
-                  key={order.id}
-                  className={`border-2 overflow-hidden ${
-                    editingOrderId === order.id
-                      ? 'border-amber-500 ring-2 ring-amber-300'
-                      : 'border-amber-200'
-                  }`}
-                >
-                  <div className="p-6">
-                    {/* Header */}
-                    <div className="flex justify-between items-start mb-4">
-                      <div>
-                        <h3 className="text-lg font-bold text-amber-900">
-                          Order #{order.id.slice(-6)}
-                        </h3>
-                        <p className="text-sm text-amber-700">
-                          {user.role === 'employee' && `Customer: ${order.userName}`}
-                          {user.role === 'client' && `Placed on: ${new Date(order.createdAt).toLocaleDateString()}`}
-                        </p>
-                      </div>
+              {sortedOrders.map((order) => {
+                const orderId = String(order.id ?? order.OrderID ?? '');
+                const status = order.status ?? order.Status ?? 'Active';
+                const fulfillmentType = order.fulfillmentType ?? 'pickup';
+                const items = order.items ?? [];
+                const total = order.total ?? order.TotalAmount ?? 0;
+                const placedAt = order.createdAt
+                  ? new Date(order.createdAt)
+                  : new Date(order.OrderDate);
 
-                      <div
-                        className={`px-4 py-2 rounded-full font-semibold text-sm ${getStatusColor(
-                          order.status
-                        )}`}
-                      >
-                        {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                      </div>
-                    </div>
-
-                    {/* Items */}
-                    <div className="mb-4 p-4 bg-amber-50 rounded border border-amber-200">
-                      <h4 className="font-semibold text-amber-900 mb-3">Items</h4>
-                      <div className="space-y-2">
-                        {order.items.map((item, idx) => (
-                          <div
-                            key={idx}
-                            className="flex justify-between items-center text-sm"
-                          >
-                            <span className="text-amber-900">
-                              {item.title} x {item.quantity}
-                            </span>
-                            <span className="text-amber-600 font-semibold">
-                              ${(item.price * item.quantity).toFixed(2)}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Total and Status Update */}
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <p className="text-sm text-amber-700 mb-1">Total Amount</p>
-                        <p className="text-2xl font-bold text-amber-600">
-                          ${order.total.toFixed(2)}
-                        </p>
-                      </div>
-
-                      {user.role === 'employee' && (
-                        <div className="flex gap-2">
-                          {editingOrderId === order.id ? (
-                            <select
-                              value={order.status}
-                              onChange={(e) => {
-                                updateOrderStatus(order.id, e.target.value as any);
-                                setEditingOrderId(null);
-                              }}
-                              className="px-3 py-2 border-2 border-amber-300 rounded-md bg-white text-amber-900 font-semibold"
-                            >
-                              {statusOptions.map((status) => (
-                                <option key={status} value={status}>
-                                  {status.charAt(0).toUpperCase() + status.slice(1)}
-                                </option>
-                              ))}
-                            </select>
-                          ) : (
-                            <Button
-                              onClick={() => setEditingOrderId(order.id)}
-                              className="bg-blue-600 hover:bg-blue-700 text-white"
-                            >
-                              Update Status
-                            </Button>
-                          )}
+                return (
+                  <Card
+                    key={orderId}
+                    className={`border-2 overflow-hidden ${
+                      editingOrderId === orderId
+                        ? 'border-[#c95a2e] ring-2 ring-[#e7b69f]'
+                        : 'border-[#e8d8c7]'
+                    }`}
+                  >
+                    <div className="p-6">
+                      <div className="flex justify-between items-start mb-4 gap-4">
+                        <div>
+                          <h3 className="text-lg font-bold text-[#7a432d]">
+                            Order #{orderId.slice(-6)}
+                          </h3>
+                          <p className="text-sm text-[#94644f]">
+                            {user.role === 'employee'
+                              ? `Customer: ${order.userName ?? 'Guest'}`
+                              : `Placed on: ${placedAt.toLocaleDateString()}`}
+                          </p>
+                          <p className="mt-1 text-sm capitalize text-[#6e9f48]">
+                            {fulfillmentType}
+                            {fulfillmentType === 'delivery' && order.deliveryAddress
+                              ? ` to ${order.deliveryAddress}`
+                              : fulfillmentType === 'pickup'
+                                ? ' order'
+                                : ''}
+                          </p>
                         </div>
-                      )}
+
+                        <div
+                          className={`px-4 py-2 rounded-full font-semibold text-sm ${getStatusColor(
+                            status
+                          )}`}
+                        >
+                          {status}
+                        </div>
+                      </div>
+
+                      <div className="mb-4 rounded border border-[#eadbcc] bg-[#faf3ea] p-4">
+                        <h4 className="mb-3 font-semibold text-[#7a432d]">Items</h4>
+                        <div className="space-y-2">
+                          {items.map((item, idx) => (
+                            <div
+                              key={`${orderId}-${idx}`}
+                              className="flex justify-between items-center text-sm"
+                            >
+                              <span className="text-[#7a432d]">
+                                {item.title} x {item.quantity}
+                              </span>
+                              <span className="font-semibold text-[#c95a2e]">
+                                ${(((item.price ?? 0) * item.quantity)).toFixed(2)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="flex justify-between items-center gap-4">
+                        <div>
+                          <p className="mb-1 text-sm text-[#94644f]">Total Amount</p>
+                          <p className="text-2xl font-bold text-[#c95a2e]">
+                            ${total.toFixed(2)}
+                          </p>
+                        </div>
+
+                        {user.role === 'employee' && (
+                          <div className="flex gap-2">
+                            {editingOrderId === orderId ? (
+                              <select
+                                value={status}
+                                onChange={(e) => {
+                                  updateOrderStatus(
+                                    orderId,
+                                    e.target.value as OrderStatus
+                                  );
+                                  setEditingOrderId(null);
+                                }}
+                                className="rounded-md border-2 border-[#dec8b4] bg-white px-3 py-2 font-semibold text-[#7a432d]"
+                              >
+                                {getStatusOptions(fulfillmentType).map((statusOption) => (
+                                  <option key={statusOption} value={statusOption}>
+                                    {statusOption}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : (
+                              <Button
+                                onClick={() => setEditingOrderId(orderId)}
+                                className="bg-[#88b95f] text-white hover:bg-[#6e9f48]"
+                              >
+                                Update Status
+                              </Button>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                </Card>
-              ))}
+                  </Card>
+                );
+              })}
             </div>
           )}
         </div>

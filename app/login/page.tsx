@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
+import { BrandLogo } from '@/components/brand-logo';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -35,34 +36,35 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-amber-50 to-red-50 p-4">
-      <Card className="w-full max-w-md border-2 border-amber-200 shadow-lg">
+    <div className="flex min-h-screen items-center justify-center bg-[linear-gradient(145deg,#f8f1e8_0%,#f2e1d0_55%,#edf4e5_100%)] p-4">
+      <Card className="w-full max-w-lg border-2 border-[#e8d8c7] bg-[#fffaf4]/95 shadow-xl">
         <div className="p-8">
-          <h1 className="text-3xl font-bold text-center mb-2 text-amber-900">Osteria</h1>
-          <p className="text-center text-amber-700 mb-8">Italian Restaurant</p>
+          <div className="mb-6 flex justify-center">
+            <BrandLogo href="/login" imageClassName="h-24 sm:h-28" />
+          </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-amber-900 mb-2">Email</label>
+              <label className="mb-2 block text-sm font-medium text-[#7a432d]">Email</label>
               <Input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="your@email.com"
                 required
-                className="border-amber-200"
+                className="border-[#dec8b4]"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-amber-900 mb-2">Password</label>
+              <label className="mb-2 block text-sm font-medium text-[#7a432d]">Password</label>
               <Input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 required
-                className="border-amber-200"
+                className="border-[#dec8b4]"
               />
             </div>
 
@@ -71,22 +73,22 @@ export default function LoginPage() {
             <Button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-amber-600 hover:bg-amber-700 text-white font-semibold py-2"
+              className="w-full bg-[#c95a2e] py-2 font-semibold text-white hover:bg-[#ab4a22]"
             >
               {isLoading ? 'Logging in...' : 'Log In'}
             </Button>
           </form>
 
-          <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded text-sm">
-            <p className="font-semibold text-amber-900 mb-2">Demo Credentials:</p>
-            <p className="text-amber-800 mb-1">
+          <div className="mt-6 rounded border border-[#d8e8c6] bg-[#f4f8ef] p-4 text-sm">
+            <p className="mb-2 font-semibold text-[#7a432d]">Demo Credentials:</p>
+            <p className="mb-1 text-[#6c5a46]">
               <strong>Client:</strong> client@example.com / password123
             </p>
-            <p className="text-amber-800 mb-3">
+            <p className="mb-3 text-[#6c5a46]">
               <strong>Employee:</strong> employee@example.com / password123
             </p>
-            <p className="text-xs text-amber-700">
-              Don&apos;t have an account? <a href="/register" className="underline font-semibold hover:text-amber-900">
+            <p className="text-xs text-[#7f6958]">
+              Don&apos;t have an account? <a href="/register" className="underline font-semibold hover:text-[#c95a2e]">
                 Register here
               </a>
             </p>

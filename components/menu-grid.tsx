@@ -30,7 +30,7 @@ export function MenuGrid({ items, isEmployee, onSelectItem }: MenuGridProps) {
         <div className="mb-6 flex gap-4">
           <Button
             onClick={() => setShowAddForm(!showAddForm)}
-            className="bg-green-600 hover:bg-green-700 text-white"
+            className="bg-[#88b95f] text-white hover:bg-[#6e9f48]"
           >
             {showAddForm ? 'Cancel' : '+ Add New Item'}
           </Button>
@@ -49,21 +49,29 @@ export function MenuGrid({ items, isEmployee, onSelectItem }: MenuGridProps) {
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {items.map((item) => (
+        {items.map((item, index) => {
+          const itemId = item.id ?? String(item.ItemID ?? `item-${index}`);
+          const itemPrice = item.price ?? item.Price ?? 0;
+          const itemTitle = item.title ?? item.ItemName ?? 'Menu Item';
+          const itemDescription = item.description ?? item.Description ?? '';
+          const itemImage = item.image ?? 'https://via.placeholder.com/300x200?text=Ostria+Dish';
+          const isAvailable = item.available ?? Boolean(item.IsAvailable ?? true);
+
+          return (
           <Card
-            key={item.id}
+            key={itemId}
             className={`overflow-hidden shadow-lg hover:shadow-xl transition border-2 ${
-              isEmployee ? 'border-amber-200' : 'border-amber-100'
-            } ${editingId === item.id ? 'ring-2 ring-amber-500' : ''}`}
+              isEmployee ? 'border-[#e8d8c7]' : 'border-[#f0dfcd]'
+            } ${editingId === itemId ? 'ring-2 ring-[#c95a2e]' : ''}`}
           >
             {/* Image */}
             <div className="relative h-48 bg-gray-200 overflow-hidden">
               <img
-                src={item.image}
-                alt={item.title}
+                src={itemImage}
+                alt={itemTitle}
                 className="w-full h-full object-cover"
               />
-              {!item.available && (
+              {!isAvailable && (
                 <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                   <span className="text-white font-semibold">Unavailable</span>
                 </div>
@@ -71,46 +79,46 @@ export function MenuGrid({ items, isEmployee, onSelectItem }: MenuGridProps) {
             </div>
 
             <div className="p-4">
-              {editingId === item.id && isEmployee ? (
+              {editingId === itemId && isEmployee ? (
                 <EmployeeMenuActions
                   mode="edit"
                   item={item}
                   onSave={(updatedItem) => {
-                    updateMenuItem(item.id, updatedItem);
+                    updateMenuItem(itemId, updatedItem);
                     setEditingId(null);
                   }}
                   onCancel={() => setEditingId(null)}
                 />
               ) : (
                 <>
-                  <h3 className="text-lg font-bold text-amber-900 mb-1">{item.title}</h3>
-                  <p className="text-sm text-amber-700 mb-3">{item.description}</p>
+                  <h3 className="mb-1 text-lg font-bold text-[#7a432d]">{itemTitle}</h3>
+                  <p className="mb-3 text-sm text-[#94644f]">{itemDescription}</p>
 
                   <div className="flex items-center justify-between mb-4">
-                    <span className="text-2xl font-bold text-amber-600">${item.price.toFixed(2)}</span>
+                    <span className="text-2xl font-bold text-[#c95a2e]">${itemPrice.toFixed(2)}</span>
                     <span
                       className={`text-xs font-semibold px-2 py-1 rounded-full ${
-                        item.available
+                        isAvailable
                           ? 'bg-green-100 text-green-700'
                           : 'bg-red-100 text-red-700'
                       }`}
                     >
-                      {item.available ? 'Available' : 'Out of Stock'}
+                      {isAvailable ? 'Available' : 'Out of Stock'}
                     </span>
                   </div>
 
                   {isEmployee ? (
                     <div className="flex gap-2">
                       <Button
-                        onClick={() => setEditingId(item.id)}
-                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                        onClick={() => setEditingId(itemId)}
+                        className="flex-1 bg-[#88b95f] text-white hover:bg-[#6e9f48]"
                         size="sm"
                       >
                         Edit
                       </Button>
                       <Button
-                        onClick={() => deleteMenuItem(item.id)}
-                        className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                        onClick={() => deleteMenuItem(itemId)}
+                        className="flex-1 bg-[#c95a2e] text-white hover:bg-[#ab4a22]"
                         size="sm"
                       >
                         Delete
@@ -119,21 +127,21 @@ export function MenuGrid({ items, isEmployee, onSelectItem }: MenuGridProps) {
                   ) : (
                     <Button
                       onClick={() => handleSelectItem(item)}
-                      disabled={!item.available}
+                      disabled={!isAvailable}
                       className={`w-full ${
-                        item.available
-                          ? 'bg-amber-600 hover:bg-amber-700'
+                        isAvailable
+                          ? 'bg-[#c95a2e] hover:bg-[#ab4a22]'
                           : 'bg-gray-400'
                       } text-white`}
                     >
-                      {item.available ? 'Select' : 'Out of Stock'}
+                      {isAvailable ? 'Select' : 'Out of Stock'}
                     </Button>
                   )}
                 </>
               )}
             </div>
           </Card>
-        ))}
+        )})}
       </div>
     </div>
   );

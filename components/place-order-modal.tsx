@@ -11,38 +11,38 @@ interface PlaceOrderModalProps {
 }
 
 export function PlaceOrderModal({ cartItems, onClose }: PlaceOrderModalProps) {
-  const total = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const total = cartItems.reduce((sum, item) => sum + (item.price ?? 0) * item.quantity, 0);
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <Card className="w-full max-w-md border-2 border-amber-300 shadow-2xl">
+      <Card className="w-full max-w-md border-2 border-[#e8d8c7] bg-[#fffaf4] shadow-2xl">
         <div className="p-6">
-          <h2 className="text-2xl font-bold text-amber-900 mb-4">Shopping Cart</h2>
+          <h2 className="mb-4 text-2xl font-bold text-[#7a432d]">Shopping Cart</h2>
 
           <div className="space-y-3 mb-6 max-h-64 overflow-y-auto">
             {cartItems.map((item) => (
-              <div key={item.menuItemId} className="flex justify-between items-center p-2 bg-amber-50 rounded">
+              <div key={item.menuItemId} className="flex items-center justify-between rounded bg-[#faf3ea] p-2">
                 <div>
-                  <p className="font-semibold text-amber-900">{item.title}</p>
-                  <p className="text-sm text-amber-700">Qty: {item.quantity}</p>
+                  <p className="font-semibold text-[#7a432d]">{item.title}</p>
+                  <p className="text-sm text-[#94644f]">Qty: {item.quantity}</p>
                 </div>
-                <p className="font-bold text-amber-600">${(item.price * item.quantity).toFixed(2)}</p>
+                <p className="font-bold text-[#c95a2e]">${(((item.price ?? 0) * item.quantity)).toFixed(2)}</p>
               </div>
             ))}
           </div>
 
-          <div className="border-t-2 border-amber-200 pt-4 mb-6">
+          <div className="mb-6 border-t-2 border-[#eadbcc] pt-4">
             <div className="flex justify-between items-center mb-2">
-              <span className="text-amber-900 font-semibold">Subtotal:</span>
-              <span className="text-amber-900">${total.toFixed(2)}</span>
+              <span className="font-semibold text-[#7a432d]">Subtotal:</span>
+              <span className="text-[#7a432d]">${total.toFixed(2)}</span>
             </div>
             <div className="flex justify-between items-center mb-2">
-              <span className="text-amber-900 font-semibold">Tax:</span>
-              <span className="text-amber-900">${(total * 0.1).toFixed(2)}</span>
+              <span className="font-semibold text-[#7a432d]">Tax:</span>
+              <span className="text-[#7a432d]">${(total * 0.1).toFixed(2)}</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-lg font-bold text-amber-900">Total:</span>
-              <span className="text-lg font-bold text-amber-600">${(total * 1.1).toFixed(2)}</span>
+              <span className="text-lg font-bold text-[#7a432d]">Total:</span>
+              <span className="text-lg font-bold text-[#c95a2e]">${(total * 1.1).toFixed(2)}</span>
             </div>
           </div>
 
@@ -55,7 +55,7 @@ export function PlaceOrderModal({ cartItems, onClose }: PlaceOrderModalProps) {
               Continue Shopping
             </Button>
             <Link href="/checkout" className="flex-1">
-              <Button className="w-full bg-amber-600 hover:bg-amber-700 text-white">
+              <Button className="w-full bg-[#c95a2e] text-white hover:bg-[#ab4a22]">
                 Proceed to Checkout
               </Button>
             </Link>

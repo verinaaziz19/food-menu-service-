@@ -1,35 +1,61 @@
-// API Route for individual order management
-// GET /api/orders/[id] - fetch a specific order with details
-// PUT /api/orders/[id] - update order status (employee only)
+import type { NextRequest } from 'next/server';
+
+import {
+  getAllowedStatuses,
+  getCurrentUser,
+  getOrdersStore,
+  normalizeOrder,
+} from '@/lib/mock-order-store';
 
 export async function GET(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await getCurrentUser(request);
+
+    if (!user) {
+      return Response.json(
+        {
+          success: false,
+          error:
+            'Unauthorized. Provide x-user-id and x-user-role headers, query params, or mock-user cookies.',
+        },
+        { status: 401 }
+      );
+    }
+
     const { id } = await params;
-    
-    // TODO: Implement database query
-    // SELECT o.OrderID, o.UserID, o.OrderDate, o.Status, o.TotalAmount,
-    //        od.OrderDetailID, od.ItemID, od.Quantity, od.UnitPrice
-    // FROM Orders o
-    // LEFT JOIN OrderDetails od ON o.OrderID = od.OrderID
-    // WHERE o.OrderID = ?
-    
+    const orderId = Number(id);
+
+    if (!Number.isInteger(orderId) || orderId <= 0) {
+      return Response.json(
+        { success: false, error: 'Invalid order id' },
+        { status: 400 }
+      );
+    }
+
+    const order = getOrdersStore().find((entry) => entry.OrderID === orderId);
+
+    if (!order) {
+      return Response.json(
+        { success: false, error: 'Order not found' },
+        { status: 404 }
+      );
+    }
+
+    if (!user.isAdmin && order.UserID !== user.userId) {
+      return Response.json(
+        { success: false, error: 'Forbidden' },
+        { status: 403 }
+      );
+    }
+
     return Response.json({
       success: true,
-      data: {
-        order: {
-          OrderID: id,
-          UserID: null,
-          OrderDate: null,
-          Status: 'Active',
-          TotalAmount: null,
-        },
-        items: []
-      }
+      data: normalizeOrder(order),
     });
-  } catch (error) {
+  } catch {
     return Response.json(
       { success: false, error: 'Failed to fetch order' },
       { status: 500 }
@@ -38,50 +64,81 @@ export async function GET(
 }
 
 export async function PUT(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await getCurrentUser(request);
+
+    if (!user) {
+      return Response.json(
+        {
+          success: false,
+          error:
+            'Unauthorized. Provide x-user-id and x-user-role headers, query params, or mock-user cookies.',
+        },
+        { status: 401 }
+      );
+    }
+
+    if (!user.isAdmin) {
+      return Response.json(
+        { success: false, error: 'Only employees can update order statuses' },
+        { status: 403 }
+      );
+    }
+
     const { id } = await params;
+    const orderId = Number(id);
+
+    if (!Number.isInteger(orderId) || orderId <= 0) {
+      return Response.json(
+        { success: false, error: 'Invalid order id' },
+        { status: 400 }
+      );
+    }
+
+    const orders = getOrdersStore();
+    const order = orders.find((entry) => entry.OrderID === orderId);
+
+    if (!order) {
+      return Response.json(
+        { success: false, error: 'Order not found' },
+        { status: 404 }
+      );
+    }
+
     const body = await request.json();
-    
-    // TODO: Implement with database update
-    // 1. Get current user and verify IsAdmin = 1 (employee only)
-    // 2. Validate Status is one of: 'Active', 'Completed', 'Cancelled'
-    // 3. UPDATE Orders SET Status = ? WHERE OrderID = ?
-    // 4. Return updated order
-    
-    const validStatuses = ['Active', 'Completed', 'Cancelled'];
-    
-    if (!body.Status) {
+    const validStatuses = getAllowedStatuses(order.FulfillmentType);
+
+    if (!body?.Status) {
       return Response.json(
         { success: false, error: 'Status field is required' },
         { status: 400 }
       );
     }
-    
+
     if (!validStatuses.includes(body.Status)) {
       return Response.json(
-        { success: false, error: `Status must be one of: ${validStatuses.join(', ')}` },
+        {
+          success: false,
+          error: `Status must be one of: ${validStatuses.join(', ')}`,
+        },
         { status: 400 }
       );
     }
-    
-    // TODO: Verify current user is employee (IsAdmin = 1)
-    // if (!user.IsAdmin) {
-    //   return Response.json({ success: false, error: 'Unauthorized' }, { status: 403 });
-    // }
-    
+
+    order.Status = body.Status;
+
     return Response.json({
       success: true,
       message: 'Order status updated',
       data: {
-        OrderID: id,
-        Status: body.Status,
-        UpdatedAt: new Date().toISOString()
-      }
+        ...normalizeOrder(order),
+        UpdatedAt: new Date().toISOString(),
+      },
     });
-  } catch (error) {
+  } catch {
     return Response.json(
       { success: false, error: 'Failed to update order' },
       { status: 500 }

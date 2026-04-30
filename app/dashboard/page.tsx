@@ -18,11 +18,11 @@ export default function DashboardPage() {
 
   return (
     <ProtectedLayout>
-      <div className="min-h-screen bg-gradient-to-br from-amber-50 to-red-50">
+      <div className="min-h-screen bg-[linear-gradient(140deg,#f9f3eb_0%,#f4e6d7_55%,#eef5e8_100%)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="mb-8">
-            <h1 className="text-4xl font-bold text-amber-900">Menu</h1>
-            <p className="text-amber-700 mt-2">
+            <h1 className="text-4xl font-bold text-[#7a432d]">Menu</h1>
+            <p className="mt-2 text-[#94644f]">
               {user.role === 'employee' ? 'Manage your restaurant menu' : 'Browse our delicious Italian dishes'}
             </p>
           </div>
@@ -49,7 +49,7 @@ export default function DashboardPage() {
             <div className="fixed bottom-8 right-8">
               <button
                 onClick={() => setShowCartModal(true)}
-                className="bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition"
+                className="rounded-xl bg-[#c95a2e] px-6 py-3 font-bold text-white shadow-lg transition hover:bg-[#ab4a22]"
               >
                 View Cart ({cart.length} items)
               </button>

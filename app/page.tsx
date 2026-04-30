@@ -1,12 +1,8 @@
-<<<<<<< HEAD
-/*import Image from "next/image";
-=======
 'use client';
 
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
->>>>>>> dev
 
 export default function Home() {
   const { user, isLoading } = useAuth();
@@ -25,18 +21,9 @@ export default function Home() {
   return (
     <div className="min-h-screen flex items-center justify-center">
       <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600 mx-auto mb-4"></div>
+        <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-amber-600"></div>
         <p className="text-amber-900">Loading...</p>
       </div>
     </div>
-  );
-}*/
-
-export default function Home() {
-  return (
-    <main>
-      <h1>Hello Verina 👋</h1>
-      <p>Your app is working!</p>
-    </main>
   );
 }

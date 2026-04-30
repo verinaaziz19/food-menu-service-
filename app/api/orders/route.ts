@@ -1,52 +1,43 @@
-// API Route for orders management
-// GET /api/orders - fetch orders (employees see all, clients see theirs only)
-// POST /api/orders - create a new order
+import type { NextRequest } from 'next/server';
 
-export async function GET(request: Request) {
+import {
+  catalog,
+  getCurrentUser,
+  getOrdersStore,
+  normalizeOrder,
+  parseFulfillmentType,
+  roundCurrency,
+  validateItems,
+} from '@/lib/mock-order-store';
+
+export async function GET(request: NextRequest) {
   try {
-    // TODO: Get current user from session/JWT token
-    // const user = await getCurrentUser();
-    // const UserID = user.UserID;
-    // const IsAdmin = user.IsAdmin;
-    
-    // If employee (IsAdmin = 1):
-    //   SELECT o.OrderID, o.UserID, o.OrderDate, o.Status, o.TotalAmount,
-    //          od.OrderDetailID, od.ItemID, od.Quantity, od.UnitPrice
-    //   FROM Orders o
-    //   LEFT JOIN OrderDetails od ON o.OrderID = od.OrderID
-    //   ORDER BY o.OrderDate DESC
-    
-    // If client (IsAdmin = 0):
-    //   SELECT o.OrderID, o.UserID, o.OrderDate, o.Status, o.TotalAmount,
-    //          od.OrderDetailID, od.ItemID, od.Quantity, od.UnitPrice
-    //   FROM Orders o
-    //   LEFT JOIN OrderDetails od ON o.OrderID = od.OrderID
-    //   WHERE o.UserID = ?
-    //   ORDER BY o.OrderDate DESC
-    
+    const user = await getCurrentUser(request);
+
+    if (!user) {
+      return Response.json(
+        {
+          success: false,
+          error:
+            'Unauthorized. Provide x-user-id and x-user-role headers, query params, or mock-user cookies.',
+        },
+        { status: 401 }
+      );
+    }
+
+    const orders = getOrdersStore();
+    const visibleOrders = user.isAdmin
+      ? orders
+      : orders.filter((order) => order.UserID === user.userId);
+
     return Response.json({
       success: true,
-      data: [],
-      example: {
-        order: {
-          OrderID: 1,
-          UserID: 1,
-          OrderDate: '2024-01-15T10:30:00Z',
-          Status: 'Active',
-          TotalAmount: 45.98,
-        },
-        items: [
-          {
-            OrderDetailID: 1,
-            OrderID: 1,
-            ItemID: 1,
-            Quantity: 2,
-            UnitPrice: 14.99,
-          }
-        ]
-      }
+      data: visibleOrders
+        .slice()
+        .sort((left, right) => right.OrderDate.localeCompare(left.OrderDate))
+        .map(normalizeOrder),
     });
-  } catch (error) {
+  } catch {
     return Response.json(
       { success: false, error: 'Failed to fetch orders' },
       { status: 500 }
@@ -54,53 +45,112 @@ export async function GET(request: Request) {
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    const user = await getCurrentUser(request);
+
+    if (!user) {
+      return Response.json(
+        {
+          success: false,
+          error:
+            'Unauthorized. Provide x-user-id and x-user-role headers, query params, or mock-user cookies.',
+        },
+        { status: 401 }
+      );
+    }
+
     const body = await request.json();
-    
-    // TODO: Implement order creation with database transaction
-    // 1. Get current UserID from session/JWT
-    // 2. Validate required fields: items (array of {ItemID, Quantity})
-    // 3. Calculate TotalAmount from items
-    // 4. INSERT INTO Orders (UserID, OrderDate, Status, TotalAmount)
-    //    VALUES (?, NOW(), 'Active', ?)
-    // 5. For each item, INSERT INTO OrderDetails (OrderID, ItemID, Quantity, UnitPrice)
-    // 6. Return created order with OrderID
-    
-    const { items } = body; // Array of {ItemID, Quantity}
-    
-    if (!items || !Array.isArray(items) || items.length === 0) {
+    const itemsResult = validateItems(body?.items);
+
+    if (!itemsResult.ok) {
       return Response.json(
-        { success: false, error: 'items array is required and must not be empty' },
+        { success: false, error: itemsResult.error },
         { status: 400 }
       );
     }
-    
-    // Validate each item has ItemID and Quantity
-    const validItems = items.every(item => item.ItemID && item.Quantity);
-    if (!validItems) {
+
+    const fulfillmentType = parseFulfillmentType(body?.FulfillmentType);
+    if (!fulfillmentType) {
       return Response.json(
-        { success: false, error: 'Each item must have ItemID and Quantity' },
+        {
+          success: false,
+          error: 'FulfillmentType must be either pickup or delivery',
+        },
         { status: 400 }
       );
     }
-    
+
+    const orders = getOrdersStore();
+    const nextOrderId =
+      orders.reduce((maxId, order) => Math.max(maxId, order.OrderID), 0) + 1;
+    const nextOrderDetailId =
+      orders
+        .flatMap((order) => order.items)
+        .reduce((maxId, item) => Math.max(maxId, item.OrderDetailID), 0) + 1;
+
+    let detailId = nextOrderDetailId;
+
+    const normalizedItems = itemsResult.value.map((item) => {
+      const itemId = Number(item.ItemID);
+      const quantity = Number(item.Quantity);
+      const catalogItem = catalog.find((entry) => entry.ItemID === itemId);
+
+      if (!Number.isInteger(itemId) || itemId <= 0 || !catalogItem) {
+        throw new Error(`Invalid ItemID: ${item.ItemID}`);
+      }
+
+      if (!Number.isInteger(quantity) || quantity <= 0) {
+        throw new Error(`Invalid quantity for ItemID ${itemId}`);
+      }
+
+      return {
+        OrderDetailID: detailId++,
+        OrderID: nextOrderId,
+        ItemID: itemId,
+        Quantity: quantity,
+        UnitPrice: catalogItem.Price,
+        ItemName: catalogItem.ItemName,
+      };
+    });
+
+    const totalAmount = roundCurrency(
+      normalizedItems.reduce((sum, item) => sum + item.UnitPrice * item.Quantity, 0)
+    );
+
+    const createdOrder = {
+      OrderID: nextOrderId,
+      UserID: user.userId,
+      OrderDate: new Date().toISOString(),
+      Status: 'Active' as const,
+      TotalAmount: totalAmount,
+      FulfillmentType: fulfillmentType,
+      items: normalizedItems,
+    };
+
+    orders.push(createdOrder);
+
     return Response.json(
       {
         success: true,
         message: 'Order created successfully',
-        data: {
-          OrderID: null, // Will be set by database
-          UserID: null, // Will be set from current user
-          OrderDate: new Date().toISOString(),
-          Status: 'Active',
-          TotalAmount: null, // Will be calculated
-          items: items
-        }
+        data: normalizeOrder(createdOrder),
       },
       { status: 201 }
     );
   } catch (error) {
+    const message = error instanceof Error ? error.message : null;
+    const isValidationError =
+      message?.startsWith('Invalid ItemID:') ||
+      message?.startsWith('Invalid quantity for ItemID');
+
+    if (isValidationError) {
+      return Response.json(
+        { success: false, error: message },
+        { status: 400 }
+      );
+    }
+
     return Response.json(
       { success: false, error: 'Failed to create order' },
       { status: 500 }

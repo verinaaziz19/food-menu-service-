@@ -6,6 +6,7 @@ import { useAuth, type UserRole } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
+import { BrandLogo } from '@/components/brand-logo';
 
 export default function RegisterPage() {
   const [email, setEmail] = useState('');
@@ -33,55 +34,57 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-emerald-50 p-4">
-      <Card className="w-full max-w-md border-2 border-green-200 shadow-lg">
+    <div className="flex min-h-screen items-center justify-center bg-[linear-gradient(145deg,#f8f1e8_0%,#f0e2d4_52%,#edf5e5_100%)] p-4">
+      <Card className="w-full max-w-lg border-2 border-[#e8d8c7] bg-[#fffaf4]/95 shadow-xl">
         <div className="p-8">
-          <h1 className="text-3xl font-bold text-center mb-2 text-green-900">Osteria</h1>
-          <p className="text-center text-green-700 mb-8">Create an Account</p>
+          <div className="mb-6 flex justify-center">
+            <BrandLogo href="/register" imageClassName="h-24 sm:h-28" />
+          </div>
+          <p className="mb-8 text-center text-[#6e9f48]">Create an Account</p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-green-900 mb-2">Full Name</label>
+              <label className="mb-2 block text-sm font-medium text-[#7a432d]">Full Name</label>
               <Input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="John Doe"
                 required
-                className="border-green-200"
+                className="border-[#dec8b4]"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-green-900 mb-2">Email</label>
+              <label className="mb-2 block text-sm font-medium text-[#7a432d]">Email</label>
               <Input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="your@email.com"
                 required
-                className="border-green-200"
+                className="border-[#dec8b4]"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-green-900 mb-2">Password</label>
+              <label className="mb-2 block text-sm font-medium text-[#7a432d]">Password</label>
               <Input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 required
-                className="border-green-200"
+                className="border-[#dec8b4]"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-green-900 mb-2">Account Type</label>
+              <label className="mb-2 block text-sm font-medium text-[#7a432d]">Account Type</label>
               <select
                 value={role}
                 onChange={(e) => setRole(e.target.value as UserRole)}
-                className="w-full px-3 py-2 border-2 border-green-200 rounded-md bg-white text-green-900"
+                className="w-full rounded-md border-2 border-[#dec8b4] bg-white px-3 py-2 text-[#7a432d]"
               >
                 <option value="client">Customer</option>
                 <option value="employee">Restaurant Employee</option>
@@ -93,15 +96,15 @@ export default function RegisterPage() {
             <Button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2"
+              className="w-full bg-[#88b95f] py-2 font-semibold text-white hover:bg-[#6e9f48]"
             >
               {isLoading ? 'Creating account...' : 'Create Account'}
             </Button>
           </form>
 
-          <div className="mt-6 text-center text-sm text-green-700">
+          <div className="mt-6 text-center text-sm text-[#7f6958]">
             Already have an account?{' '}
-            <a href="/login" className="font-semibold underline hover:text-green-900">
+            <a href="/login" className="font-semibold underline hover:text-[#c95a2e]">
               Log in here
             </a>
           </div>

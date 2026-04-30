@@ -6,11 +6,13 @@ import { initializeDemoUsers } from './init-demo';
 export type UserRole = 'employee' | 'client';
 
 export interface User {
-  UserID: string | number;
-  Email: string;
-  IsAdmin: number; // 0 = client, 1 = employee
-  CreatedAt: string;
+  UserID?: string | number;
+  Email?: string;
+  IsAdmin?: number; // 0 = client, 1 = employee
+  CreatedAt?: string;
   // Frontend convenience properties
+  id?: string;
+  email?: string;
   role?: UserRole;
   name?: string;
 }
@@ -24,14 +26,14 @@ export interface UserProfile {
 }
 
 export interface MenuItem {
-  ItemID: string | number;
-  ItemName: string;
-  Description: string;
-  Price: number;
-  Category: string;
-  IsAvailable: number; // 0 = unavailable, 1 = available
-  CreatedBy: string | number;
-  CreatedAt: string;
+  ItemID?: string | number;
+  ItemName?: string;
+  Description?: string;
+  Price?: number;
+  Category?: string;
+  IsAvailable?: number; // 0 = unavailable, 1 = available
+  CreatedBy?: string | number;
+  CreatedAt?: string;
   // Frontend convenience properties
   id?: string;
   title?: string;
@@ -52,7 +54,23 @@ export interface OrderDetail {
   menuItemId?: string;
 }
 
-export type OrderStatus = 'Active' | 'Completed' | 'Cancelled';
+export interface OrderItem {
+  menuItemId?: string;
+  title?: string;
+  price?: number;
+  quantity: number;
+}
+
+export type FulfillmentType = 'pickup' | 'delivery';
+
+export type OrderStatus =
+  | 'Active'
+  | 'Ready for Pickup'
+  | 'Picked Up'
+  | 'On the Way'
+  | 'Delivered'
+  | 'Completed'
+  | 'Cancelled';
 
 export interface Order {
   OrderID: string | number;
@@ -63,11 +81,13 @@ export interface Order {
   // Frontend convenience properties
   id?: string;
   userId?: string;
-  items?: OrderDetail[];
+  items?: OrderItem[];
   total?: number;
   status?: OrderStatus;
   createdAt?: Date;
   userName?: string;
+  fulfillmentType?: FulfillmentType;
+  deliveryAddress?: string;
 }
 
 interface AuthContextType {
