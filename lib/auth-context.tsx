@@ -76,6 +76,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, name: string, role: UserRole) => Promise<void>;
   logout: () => void;
+  updateUser: (updatedUser: User) => void; // Add this line
   menuItems: MenuItem[];
   addMenuItem: (item: MenuItem) => void;
   updateMenuItem: (id: string, item: MenuItem) => void;
@@ -266,6 +267,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem('user');
   };
 
+  // Add the updateUser function
+  const updateUser = (updatedUser: User) => {
+    setUser(updatedUser);
+    localStorage.setItem('user', JSON.stringify(updatedUser));
+  };
+
   const addMenuItem = (item: MenuItem) => {
     const newItem = { ...item, id: Date.now().toString() };
     setMenuItems([...menuItems, newItem]);
@@ -323,6 +330,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     login,
     register,
     logout,
+    updateUser, // Add this line
     menuItems,
     addMenuItem,
     updateMenuItem,
