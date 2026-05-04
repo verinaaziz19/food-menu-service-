@@ -92,79 +92,79 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const MOCK_MENU_ITEMS: MenuItem[] = [
-  {
-    id: '1',
-    title: 'Margherita Pizza',
-    description: 'Classic pizza with tomato, mozzarella, and basil',
-    price: 12.99,
-    image: 'https://via.placeholder.com/300x200?text=Margherita+Pizza',
-    available: true,
-  },
-  {
-    id: '2',
-    title: 'Spaghetti Carbonara',
-    description: 'Traditional pasta with eggs, cheese, and pancetta',
-    price: 14.99,
-    image: 'https://via.placeholder.com/300x200?text=Spaghetti+Carbonara',
-    available: true,
-  },
-  {
-    id: '3',
-    title: 'Risotto ai Funghi',
-    description: 'Creamy risotto with mushrooms',
-    price: 13.99,
-    image: 'https://via.placeholder.com/300x200?text=Risotto+Funghi',
-    available: true,
-  },
-  {
-    id: '4',
-    title: 'Tiramisu',
-    description: 'Classic Italian dessert with mascarpone and coffee',
-    price: 6.99,
-    image: 'https://via.placeholder.com/300x200?text=Tiramisu',
-    available: true,
-  },
-  {
-    id: '5',
-    title: 'Lasagna Bolognese',
-    description: 'Layered pasta with rich meat sauce',
-    price: 13.50,
-    image: 'https://via.placeholder.com/300x200?text=Lasagna+Bolognese',
-    available: true,
-  },
-];
+// const MOCK_MENU_ITEMS: MenuItem[] = [
+//   {
+//     id: '1',
+//     title: 'Margherita Pizza',
+//     description: 'Classic pizza with tomato, mozzarella, and basil',
+//     price: 12.99,
+//     image: 'https://via.placeholder.com/300x200?text=Margherita+Pizza',
+//     available: true,
+//   },
+//   {
+//     id: '2',
+//     title: 'Spaghetti Carbonara',
+//     description: 'Traditional pasta with eggs, cheese, and pancetta',
+//     price: 14.99,
+//     image: 'https://via.placeholder.com/300x200?text=Spaghetti+Carbonara',
+//     available: true,
+//   },
+//   {
+//     id: '3',
+//     title: 'Risotto ai Funghi',
+//     description: 'Creamy risotto with mushrooms',
+//     price: 13.99,
+//     image: 'https://via.placeholder.com/300x200?text=Risotto+Funghi',
+//     available: true,
+//   },
+//   {
+//     id: '4',
+//     title: 'Tiramisu',
+//     description: 'Classic Italian dessert with mascarpone and coffee',
+//     price: 6.99,
+//     image: 'https://via.placeholder.com/300x200?text=Tiramisu',
+//     available: true,
+//   },
+//   {
+//     id: '5',
+//     title: 'Lasagna Bolognese',
+//     description: 'Layered pasta with rich meat sauce',
+//     price: 13.50,
+//     image: 'https://via.placeholder.com/300x200?text=Lasagna+Bolognese',
+//     available: true,
+//   },
+// ];
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [menuItems, setMenuItems] = useState<MenuItem[]>(MOCK_MENU_ITEMS);
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [cart, setCart] = useState<OrderItem[]>([]);
 
   // Load from localStorage on mount
   useEffect(() => {
     // Initialize demo users if needed
-    const existingUsers = localStorage.getItem('users');
-    if (!existingUsers) {
-      const demoUsers = [
-        {
-          id: '1',
-          email: 'client@example.com',
-          password: 'password123',
-          name: 'John Customer',
-          role: 'client',
-        },
-        {
-          id: '2',
-          email: 'employee@example.com',
-          password: 'password123',
-          name: 'Maria Chef',
-          role: 'employee',
-        },
-      ];
-      localStorage.setItem('users', JSON.stringify(demoUsers));
-    }
+    // const existingUsers = localStorage.getItem('users');
+    // if (!existingUsers) {
+    //   const demoUsers = [
+    //     {
+    //       id: '1',
+    //       email: 'client@example.com',
+    //       password: 'password123',
+    //       name: 'John Customer',
+    //       role: 'client',
+    //     },
+    //     {
+    //       id: '2',
+    //       email: 'employee@example.com',
+    //       password: 'password123',
+    //       name: 'Maria Chef',
+    //       role: 'employee',
+    //     },
+    //   ];
+    //   localStorage.setItem('users', JSON.stringify(demoUsers));
+    // }
 
     const storedUser = localStorage.getItem('user');
     const storedMenuItems = localStorage.getItem('menuItems');

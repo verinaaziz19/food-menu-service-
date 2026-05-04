@@ -12,9 +12,9 @@ CREATE TABLE users (
   UNIQUE KEY (Email)
 );
  
-INSERT INTO users VALUES
-  (1, 'customer@example.com', 'hashed_password_here', 0),
-  (2, 'admin@example.com',    'hashed_password_here', 1);
+INSERT INTO users (Email,Password,IsAdmin) VALUES
+  ('customer@example.com', 'hashed_password_here', 0),
+  ('admin@example.com',    'hashed_password_here', 1);
  
 -- Profiles
 CREATE TABLE profiles (
@@ -28,9 +28,9 @@ CREATE TABLE profiles (
   FOREIGN KEY (UserID) REFERENCES users(UserID) ON DELETE CASCADE
 );
  
-INSERT INTO profiles VALUES
-  (1, 1, 'John Doe',    '123 Main St',  '555-1234'),
-  (2, 2, 'Admin User',  '456 Admin Ave', '555-5678');
+INSERT INTO profiles (UserID, Name, Address, CellPhone) VALUES
+  (1, 'John Doe',   '123 Main St',   '555-1234'),
+  (2, 'Admin User', '456 Admin Ave', '555-5678');
  
 -- Items
 CREATE TABLE items (
@@ -44,10 +44,11 @@ CREATE TABLE items (
   PRIMARY KEY (ItemID)
 );
  
-INSERT INTO items VALUES
-  (1, 'Margherita Pizza', 'Fresh mozzarella, tomatoes, basil',          1, 'Pizza',    12.99, 'margherita.jpg'),
-  (2, 'Caesar Salad',     'Romaine, parmesan, croutons, caesar dressing', 1, 'Salads',   8.99, 'caesar.jpg'),
-  (3, 'Chocolate Cake',   'Rich chocolate layer cake',                   1, 'Desserts',  5.99, 'chocolate_cake.jpg');
+INSERT INTO items (Name, Description, Availability, Category, Price, Image) VALUES
+  ('Margherita Pizza', 'Fresh mozzarella, tomatoes, basil',           1, 'Pizza',    12.99, 'margherita.jpg'),
+  ('Caesar Salad',     'Romaine, parmesan, croutons, caesar dressing', 1, 'Salads',    8.99, 'caesar.jpg'),
+  ('Chocolate Cake',   'Rich chocolate layer cake',                    1, 'Desserts',  5.99, 'chocolate_cake.jpg');
+
  
 -- Orders
 CREATE TABLE orders (
@@ -60,8 +61,8 @@ CREATE TABLE orders (
   FOREIGN KEY (UserID) REFERENCES users(UserID)
 );
  
-INSERT INTO orders VALUES
-  (1, 1, '2026-04-23 02:08:23', 0.00, 'Active');
+INSERT INTO orders (UserID, OrderTime, TotalPrice, Status) VALUES
+  (1, '2026-04-23 02:08:23', 0.00, 'Active');
  
 -- Order Details
 CREATE TABLE order_details (
@@ -74,3 +75,10 @@ CREATE TABLE order_details (
   FOREIGN KEY (OrderID) REFERENCES orders(OrderID) ON DELETE CASCADE,
   FOREIGN KEY (ItemID)  REFERENCES items(ItemID)
 );
+
+
+
+UPDATE orders SET TotalPrice = 21.98 WHERE OrderID = 1;
+INSERT INTO order_details (OrderID, ItemID, Quantity, UnitPrice) VALUES
+  (1, 1, 1, 12.99),  -- 1x Margherita Pizza
+  (1, 2, 1,  8.99);  -- 1x Caesar Salad
