@@ -1,16 +1,45 @@
-'use client';
+"use client";
 
-import { useAuth } from '@/lib/auth-context';
-import { ProtectedLayout } from '@/app/protected-layout';
-import { MenuItem } from '@/lib/auth-context';
-import { MenuGrid } from '@/components/menu-grid';
-import { PlaceOrderModal } from '@/components/place-order-modal';
-import { useState } from 'react';
+import { useAuth } from "@/lib/auth-context";
+import { ProtectedLayout } from "@/app/protected-layout";
+import { MenuItem } from "@/lib/auth-context";
+import { MenuGrid } from "@/components/menu-grid";
+import { PlaceOrderModal } from "@/components/place-order-modal";
+import { useEffect, useState } from "react";
 
 export default function DashboardPage() {
-  const { user, menuItems, cart } = useAuth();
+  const { user, cart } = useAuth();
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
   const [showCartModal, setShowCartModal] = useState(false);
+  const [menuItems, setMenuItems] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchMenuItems = async () => {
+      try {
+        const res = await fetch("/api/menu", { credentials: "include" });
+        const data = await res.json();
+        if (data.success) {
+          const mapped = data.data.items.map((item: any) => ({
+            id: String(item.ItemID),
+            title: item.Name,
+            description: item.Description,
+            price: parseFloat(item.Price),
+            category: item.Category,
+            available: item.Availability === 1,
+            image: item.Image ? `/images/${item.Image}` : "",
+          }));
+          setMenuItems(mapped);
+        }
+      } catch (error) {
+        console.error("Failed to fetch menu items:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchMenuItems();
+  }, []);
 
   if (!user) {
     return null;
@@ -23,21 +52,27 @@ export default function DashboardPage() {
           <div className="mb-8">
             <h1 className="text-4xl font-bold text-amber-900">Menu</h1>
             <p className="text-amber-700 mt-2">
-              {user.role === 'employee' ? 'Manage your restaurant menu' : 'Browse our delicious Italian dishes'}
+              {user.role === "employee"
+                ? "Manage your restaurant menu"
+                : "Browse our delicious Italian dishes"}
             </p>
           </div>
 
           {/* Menu Grid */}
           <div className="mb-8">
-            <MenuGrid
-              items={menuItems}
-              isEmployee={user.role === 'employee'}
-              onSelectItem={setSelectedItem}
-            />
+            {isLoading ? (
+              <p className="text-amber-700">Loading menu...</p>
+            ) : (
+              <MenuGrid
+                items={menuItems}
+                isEmployee={user.role === "employee"}
+                onSelectItem={setSelectedItem}
+              />
+            )}
           </div>
 
           {/* Place Order Modal - shows when items are selected for clients and showCartModal is true */}
-          {user.role === 'client' && cart.length > 0 && showCartModal && (
+          {user.role === "client" && cart.length > 0 && showCartModal && (
             <PlaceOrderModal
               cartItems={cart}
               onClose={() => setShowCartModal(false)}
@@ -45,7 +80,7 @@ export default function DashboardPage() {
           )}
 
           {/* Show cart button when items are in cart but modal is hidden */}
-          {user.role === 'client' && cart.length > 0 && !showCartModal && (
+          {user.role === "client" && cart.length > 0 && !showCartModal && (
             <div className="fixed bottom-8 right-8">
               <button
                 onClick={() => setShowCartModal(true)}
