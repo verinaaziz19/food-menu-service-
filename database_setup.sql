@@ -12,9 +12,9 @@ CREATE TABLE users (
   UNIQUE KEY (Email)
 );
  
-INSERT INTO users VALUES
-  (1, 'customer@example.com', 'hashed_password_here', 0),
-  (2, 'admin@example.com',    'hashed_password_here', 1);
+
+  UPDATE users SET Password = 'password123' WHERE Email = 'customer@example.com';
+  UPDATE users SET Password = 'password123' WHERE Email = 'admin@example.com';
  
 -- Profiles
 CREATE TABLE profiles (
@@ -22,7 +22,9 @@ CREATE TABLE profiles (
   UserID    INT          NOT NULL,
   Name      VARCHAR(100) NOT NULL,
   Address   TEXT,
-  CellPhone VARCHAR(12),
+
+  CellPhone VARCHAR(16),
+
   PRIMARY KEY (ProfileID),
   UNIQUE KEY (UserID),
   FOREIGN KEY (UserID) REFERENCES users(UserID) ON DELETE CASCADE
