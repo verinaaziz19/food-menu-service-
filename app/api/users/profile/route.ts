@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { RowDataPacket, ResultSetHeader } from 'mysql2';
 import pool from '@/lib/db';
+import { getCurrentUserId } from '@/lib/auth';
 
 // Define types
 interface UserProfileRow extends RowDataPacket {
@@ -18,25 +19,30 @@ interface ProfileExistsRow extends RowDataPacket {
   ProfileID: number;
 }
 
-async function getCurrentUserId(request: NextRequest): Promise<string | number | null> {
-  try {
-    const userId = request.headers.get('X-User-Id');
-    console.log('X-User-Id header:', userId);
-    
-    if (userId) {
-      return userId;
-    }
-    
-    // For development - use a test user ID (change to an ID that exists in your DB)
-    console.log('No user ID found, using default test ID: 1');
-    return '1';
-  } catch (error) {
-    console.error('Auth error:', error);
-    return null;
-  }
-}
+/**
+ * GET /api/users/profile
+ * 
+ * fetch the current user's profile information
+ *
+ *  retrieves users info (email, role)
+ * profile data (name, address, phone)
+ * displays info on profile page
+ * 
+ * called when user visits profile page
+ * after profile update to refrehs data
+ * page refresh when on profile page
+ * 
+ * extracts and validates JWT token
+ * gets userID from token
+ * joins users and profiles table
+ * returns combined user and profile data
+ * 
+ * throws 401 if no valid token or userID
+ * throws 404 if no user found for userID
+ * 
+ */
 
-// app/api/users/profile/route.ts - Update the GET function
+
 
 export async function GET(request: NextRequest) {
   try {
@@ -50,7 +56,6 @@ export async function GET(request: NextRequest) {
     
     console.log('Querying database for UserID:', UserID);
     
-    // Remove CreatedAt since it doesn't exist in your table
     const [rows] = await pool.query<UserProfileRow[]>(
       `SELECT u.UserID, u.Email, u.IsAdmin,
               p.ProfileID, p.Name, p.Address, p.CellPhone
@@ -68,7 +73,6 @@ export async function GET(request: NextRequest) {
     }
     
     const user = rows[0];
-    console.log('User found:', user);
     
     return NextResponse.json({
       success: true,
@@ -127,7 +131,7 @@ export async function PUT(request: NextRequest) {
           if (cleaned.length === 10) {
             value = `${cleaned.slice(0,3)}-${cleaned.slice(3,6)}-${cleaned.slice(6,10)}`;
           } else if (cleaned.length > 0) {
-            value = cleaned; // Just store digits
+            value = cleaned;
           }
           
           // Truncate if too long (max 50 characters)
@@ -149,9 +153,6 @@ export async function PUT(request: NextRequest) {
       }
     });
     
-    console.log('Update data:', updateData);
-    console.log('Values array:', values);
-    
     if (Object.keys(updateData).length === 0) {
       return NextResponse.json(
         { success: false, error: 'No valid fields to update' },
@@ -165,29 +166,23 @@ export async function PUT(request: NextRequest) {
       [UserID]
     );
     
-    console.log('Existing profile check:', existingRows);
-    
     if (existingRows && existingRows.length > 0) {
       // Update existing profile
       const setClause = Object.keys(updateData).map(key => `${key} = ?`).join(', ');
       values.push(UserID);
-      const updateSql = `UPDATE Profiles SET ${setClause} WHERE UserID = ?`;
-      console.log('Update SQL:', updateSql);
-      console.log('Update values:', values);
-      
-      await pool.query<ResultSetHeader>(updateSql, values);
-      console.log('Profile updated successfully');
+      await pool.query<ResultSetHeader>(
+        `UPDATE Profiles SET ${setClause} WHERE UserID = ?`,
+        values
+      );
     } else {
       // Insert new profile
       const columns = ['UserID', ...Object.keys(updateData)];
       const placeholders = columns.map(() => '?').join(', ');
       const insertValues = [UserID, ...values];
-      const insertSql = `INSERT INTO Profiles (${columns.join(', ')}) VALUES (${placeholders})`;
-      console.log('Insert SQL:', insertSql);
-      console.log('Insert values:', insertValues);
-      
-      await pool.query<ResultSetHeader>(insertSql, insertValues);
-      console.log('Profile created successfully');
+      await pool.query<ResultSetHeader>(
+        `INSERT INTO Profiles (${columns.join(', ')}) VALUES (${placeholders})`,
+        insertValues
+      );
     }
     
     // Fetch updated profile
@@ -198,20 +193,16 @@ export async function PUT(request: NextRequest) {
     );
     
     const updatedProfile = (updatedRows && updatedRows[0]) || {};
-    console.log('Updated profile:', updatedProfile);
     
     return NextResponse.json({
       success: true,
       message: 'Profile updated successfully',
-      data: {
-        ...updatedProfile,
-        UpdatedAt: new Date().toISOString()
-      }
+      data: updatedProfile
     });
   } catch (error) {
     console.error('Error updating profile:', error);
     return NextResponse.json(
-      { success: false, error: 'Failed to update profile', details: error instanceof Error ? error.message : String(error) },
+      { success: false, error: 'Failed to update profile' },
       { status: 500 }
     );
   }

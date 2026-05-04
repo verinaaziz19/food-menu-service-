@@ -133,7 +133,7 @@ export default function ProfilePage() {
         formattedPhone = cleanedPhone;
       }
       
-      // Combine address fields into a single address string
+      // Combine address fields into a single address string for profiles table
       let fullAddress = profileData.address;
       if (profileData.city) {
         fullAddress += `, ${profileData.city}`;
@@ -142,6 +142,7 @@ export default function ProfilePage() {
         fullAddress += `, ${profileData.postalCode}`;
       }
       
+      //apidata used for debugging and api calls
       const apiData = {
         Name: profileData.name,
         CellPhone: formattedPhone,
@@ -172,7 +173,7 @@ export default function ProfilePage() {
         
         setIsEditing(false);
         
-        // Refetch the profile to ensure display is updated
+        //fetch the profile to ensure display is updated
         await fetchProfile();
         
         alert('Profile updated successfully!');
