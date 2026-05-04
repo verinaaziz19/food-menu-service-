@@ -22,7 +22,7 @@ CREATE TABLE profiles (
   UserID    INT          NOT NULL,
   Name      VARCHAR(100) NOT NULL,
   Address   TEXT,
-  CellPhone VARCHAR(12),
+  CellPhone VARCHAR(16),
   PRIMARY KEY (ProfileID),
   UNIQUE KEY (UserID),
   FOREIGN KEY (UserID) REFERENCES users(UserID) ON DELETE CASCADE

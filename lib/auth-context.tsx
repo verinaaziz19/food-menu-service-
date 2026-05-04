@@ -1,15 +1,15 @@
+// lib/auth-context.tsx
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { initializeDemoUsers } from './init-demo';
 
 export type UserRole = 'employee' | 'client';
 
 export interface User {
-  UserID?: string | number;
-  Email?: string;
-  IsAdmin?: number; // 0 = client, 1 = employee
-  CreatedAt?: string;
+  UserID: string | number;
+  Email: string;
+  IsAdmin: number; // 0 = client, 1 = employee
+  CreatedAt: string;
   // Frontend convenience properties
   id?: string;
   email?: string;
@@ -90,12 +90,20 @@ export interface Order {
   deliveryAddress?: string;
 }
 
+interface OrderItem {
+  menuItemId: string;
+  title?: string;
+  price?: number;
+  quantity: number;
+}
+
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, name: string, role: UserRole) => Promise<void>;
   logout: () => void;
+  updateUser: (updatedUser: User) => void;
   menuItems: MenuItem[];
   addMenuItem: (item: MenuItem) => void;
   updateMenuItem: (id: string, item: MenuItem) => void;
@@ -154,6 +162,19 @@ const MOCK_MENU_ITEMS: MenuItem[] = [
   },
 ];
 
+/**
+ * manages global authentication state and user sessions
+ * 
+ * stores current user info
+ * handles login, registration, and logout API calls
+ * persists sessions across page refreshes
+ * provides cart, orders, and menu mangagement
+ * 
+ * used in any .tsx component wiht const{user, login, logout} = useAuth();
+ * 
+ */
+
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -161,163 +182,173 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [cart, setCart] = useState<OrderItem[]>([]);
 
-  // Load from localStorage on mount
+  // Check for existing session on mount
   useEffect(() => {
-    // Initialize demo users if needed
-    const existingUsers = localStorage.getItem('users');
-    if (!existingUsers) {
-      const demoUsers = [
-        {
-          id: '1',
-          email: 'client@example.com',
-          password: 'password123',
-          name: 'John Customer',
-          role: 'client',
-        },
-        {
-          id: '2',
-          email: 'employee@example.com',
-          password: 'password123',
-          name: 'Maria Chef',
-          role: 'employee',
-        },
-      ];
-      localStorage.setItem('users', JSON.stringify(demoUsers));
-    }
-
-    const storedUser = localStorage.getItem('user');
-    const storedMenuItems = localStorage.getItem('menuItems');
-    const storedOrders = localStorage.getItem('orders');
-
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    if (storedMenuItems) {
-      setMenuItems(JSON.parse(storedMenuItems));
-    }
-    if (storedOrders) {
-      const parsedOrders = JSON.parse(storedOrders).map((order: any) => ({
-        ...order,
-        createdAt: new Date(order.createdAt),
-      }));
-      setOrders(parsedOrders);
-    }
-    setIsLoading(false);
+    const checkAuth = async () => {
+      try {
+        const response = await fetch('/api/auth/me', {
+          credentials: 'include',
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.data.user) {
+            setUser(data.data.user);
+          }
+        }
+      } catch (error) {
+        console.error('Auth check failed:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    checkAuth();
   }, []);
 
-  // Save to localStorage whenever state changes
-  useEffect(() => {
-    localStorage.setItem('menuItems', JSON.stringify(menuItems));
-  }, [menuItems]);
 
-  useEffect(() => {
-    localStorage.setItem('orders', JSON.stringify(orders));
-  }, [orders]);
+  /**
+ * 
+ * sends credentials to api/auth/login
+ * stores user state and token on success
+ * cookie is stored HTTPonly automatically by server
+ * 
+ */
 
-  useEffect(() => {
-    if (user) {
-      localStorage.setItem('user', JSON.stringify(user));
-    }
-  }, [user]);
 
   const login = async (email: string, password: string) => {
-    return new Promise<void>((resolve, reject) => {
-      console.log('[v0] Login attempt with email:', email);
-      // Mock login - just check if user exists
-      const storedUsers = JSON.parse(localStorage.getItem('users') || '[]');
-      console.log('[v0] Stored users:', storedUsers);
-      const foundUser = storedUsers.find((u: any) => u.email === email && u.password === password);
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+        credentials: 'include',
+      });
 
-      if (!foundUser) {
-        console.log('[v0] User not found');
-        reject(new Error('Invalid email or password'));
-        return;
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Login failed');
       }
 
-      console.log('[v0] User found, setting user:', foundUser);
-      const newUser = {
-        id: foundUser.id,
-        email: foundUser.email,
-        name: foundUser.name,
-        role: foundUser.role,
-      };
-      setUser(newUser);
-      localStorage.setItem('user', JSON.stringify(newUser));
-      resolve();
-    });
+      setUser(data.data.user);
+      
+      // Store token in localStorage for API calls
+      if (data.data.token) {
+        localStorage.setItem('auth-token', data.data.token);
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error;
+    }
   };
+
+ /**
+   * Creates new user account /api/auth/register
+   * 
+   * automatically logs user in (returns token) after register
+   * User can immediately access protected routes
+   */
 
   const register = async (email: string, password: string, name: string, role: UserRole) => {
-    return new Promise<void>((resolve, reject) => {
-      const storedUsers = JSON.parse(localStorage.getItem('users') || '[]');
+    try {
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, name, role }),
+        credentials: 'include',
+      });
 
-      if (storedUsers.some((u: any) => u.email === email)) {
-        reject(new Error('Email already exists'));
-        return;
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Registration failed');
       }
 
-      const newUserData = {
-        id: Date.now().toString(),
-        email,
-        password,
-        name,
-        role,
-      };
-
-      storedUsers.push(newUserData);
-      localStorage.setItem('users', JSON.stringify(storedUsers));
-
-      const newUser = {
-        id: newUserData.id,
-        email: newUserData.email,
-        name: newUserData.name,
-        role: newUserData.role,
-      };
-
-      setUser(newUser);
-      localStorage.setItem('user', JSON.stringify(newUser));
-      resolve();
-    });
+      setUser(data.data.user);
+      
+      // Store token in localStorage for API calls
+      if (data.data.token) {
+        localStorage.setItem('auth-token', data.data.token);
+      }
+    } catch (error) {
+      console.error('Registration error:', error);
+      throw error;
+    }
   };
 
-  const logout = () => {
+
+
+  /**
+   * Calls /api/auth/logout to clear HTTP-only cookie
+   * 
+   * Clears local user state, cart, and localStorage
+   * User must log in again to access protected routes
+   */
+
+  const logout = async () => {
+    try {
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include',
+      });
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+    
     setUser(null);
     setCart([]);
-    localStorage.removeItem('user');
+    localStorage.removeItem('auth-token');
+    localStorage.removeItem('user'); // Clean up old localStorage data
+  };
+
+
+  const updateUser = (updatedUser: User) => {
+    setUser(updatedUser);
+    // Update localStorage for consistency
+    localStorage.setItem('user', JSON.stringify(updatedUser));
   };
 
   const addMenuItem = (item: MenuItem) => {
     const newItem = { ...item, id: Date.now().toString() };
     setMenuItems([...menuItems, newItem]);
+    localStorage.setItem('menuItems', JSON.stringify([...menuItems, newItem]));
   };
 
   const updateMenuItem = (id: string, item: MenuItem) => {
-    setMenuItems(menuItems.map((m) => (m.id === id ? { ...item, id } : m)));
+    const updatedItems = menuItems.map((m) => (m.id === id ? { ...item, id } : m));
+    setMenuItems(updatedItems);
+    localStorage.setItem('menuItems', JSON.stringify(updatedItems));
   };
 
   const deleteMenuItem = (id: string) => {
-    setMenuItems(menuItems.filter((m) => m.id !== id));
+    const filteredItems = menuItems.filter((m) => m.id !== id);
+    setMenuItems(filteredItems);
+    localStorage.setItem('menuItems', JSON.stringify(filteredItems));
   };
 
   const addOrder = (order: Order) => {
-    setOrders([...orders, order]);
+    const newOrders = [...orders, order];
+    setOrders(newOrders);
+    localStorage.setItem('orders', JSON.stringify(newOrders));
     setCart([]);
   };
 
   const updateOrderStatus = (orderId: string, status: OrderStatus) => {
-    setOrders(orders.map((o) => (o.id === orderId ? { ...o, status } : o)));
+    const updatedOrders = orders.map((o) => (o.id === orderId ? { ...o, status } : o));
+    setOrders(updatedOrders);
+    localStorage.setItem('orders', JSON.stringify(updatedOrders));
   };
 
   const addToCart = (item: MenuItem) => {
     const existingItem = cart.find((c) => c.menuItemId === item.id);
+    let newCart;
     if (existingItem) {
-      setCart(
-        cart.map((c) =>
-          c.menuItemId === item.id ? { ...c, quantity: c.quantity + 1 } : c
-        )
+      newCart = cart.map((c) =>
+        c.menuItemId === item.id ? { ...c, quantity: c.quantity + 1 } : c
       );
     } else {
-      setCart([
+      newCart = [
         ...cart,
         {
           menuItemId: item.id,
@@ -325,16 +356,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           price: item.price,
           quantity: 1,
         },
-      ]);
+      ];
     }
+    setCart(newCart);
+    localStorage.setItem('cart', JSON.stringify(newCart));
   };
 
   const removeFromCart = (menuItemId: string) => {
-    setCart(cart.filter((c) => c.menuItemId !== menuItemId));
+    const newCart = cart.filter((c) => c.menuItemId !== menuItemId);
+    setCart(newCart);
+    localStorage.setItem('cart', JSON.stringify(newCart));
   };
 
   const clearCart = () => {
     setCart([]);
+    localStorage.removeItem('cart');
   };
 
   const value: AuthContextType = {
@@ -343,6 +379,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     login,
     register,
     logout,
+    updateUser,
     menuItems,
     addMenuItem,
     updateMenuItem,
@@ -358,6 +395,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
+
+/**
+ * Custom hook to access auth context anywhere in the app.
+ *
+ * throws error if used outside AuthProvider (helps catch bugs).
+ * e.g.
+ * const { user, login, logout } = useAuth();
+ */
 
 export function useAuth() {
   const context = useContext(AuthContext);
