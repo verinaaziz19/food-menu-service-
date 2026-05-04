@@ -13,8 +13,8 @@ CREATE TABLE users (
 );
  
 
-  UPDATE users SET Password = 'password123' WHERE Email = 'customer@example.com';
-  UPDATE users SET Password = 'password123' WHERE Email = 'admin@example.com';
+  UPDATE users SET Email = 'client@example.com' WHERE Email = 'customer@example.com';
+  UPDATE users SET Email = 'employee@example.com' WHERE Email = 'admin@example.com';
  
 -- Profiles
 CREATE TABLE profiles (
