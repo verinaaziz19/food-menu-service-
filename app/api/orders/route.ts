@@ -1,109 +1,194 @@
-// API Route for orders management
-// GET /api/orders - fetch orders (employees see all, clients see theirs only)
-// POST /api/orders - create a new order
+import { NextRequest, NextResponse } from "next/server";
+import pool from "@/lib/db";
+import { verifyToken } from "@/lib/jwt";
+import { RowDataPacket, ResultSetHeader } from "mysql2";
 
-export async function GET(request: Request) {
+interface OrderRow extends RowDataPacket {
+  OrderID: number;
+  UserID: number;
+  OrderTime: string;
+  TotalPrice: number;
+  Status: string;
+  Name: string;
+}
+
+interface OrderDetailRow extends RowDataPacket {
+  Order_DetailsID: number;
+  OrderID: number;
+  ItemID: number;
+  Quantity: number;
+  UnitPrice: number;
+  ItemName: string;
+}
+
+export async function GET(request: NextRequest) {
   try {
-    // TODO: Get current user from session/JWT token
-    // const user = await getCurrentUser();
-    // const UserID = user.UserID;
-    // const IsAdmin = user.IsAdmin;
-    
-    // If employee (IsAdmin = 1):
-    //   SELECT o.OrderID, o.UserID, o.OrderDate, o.Status, o.TotalAmount,
-    //          od.OrderDetailID, od.ItemID, od.Quantity, od.UnitPrice
-    //   FROM Orders o
-    //   LEFT JOIN OrderDetails od ON o.OrderID = od.OrderID
-    //   ORDER BY o.OrderDate DESC
-    
-    // If client (IsAdmin = 0):
-    //   SELECT o.OrderID, o.UserID, o.OrderDate, o.Status, o.TotalAmount,
-    //          od.OrderDetailID, od.ItemID, od.Quantity, od.UnitPrice
-    //   FROM Orders o
-    //   LEFT JOIN OrderDetails od ON o.OrderID = od.OrderID
-    //   WHERE o.UserID = ?
-    //   ORDER BY o.OrderDate DESC
-    
-    return Response.json({
+    const token = request.cookies.get("auth-token")?.value;
+    if (!token) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 },
+      );
+    }
+
+    const payload = verifyToken(token);
+    if (!payload) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 },
+      );
+    }
+
+    let orders: OrderRow[];
+
+    if (payload.IsAdmin === 1) {
+      // Employee sees all orders with customer names
+      [orders] = await pool.query<OrderRow[]>(
+        `SELECT o.OrderID, o.UserID, o.OrderTime, o.TotalPrice, o.Status, p.Name
+         FROM orders o
+         LEFT JOIN profiles p ON o.UserID = p.UserID
+         ORDER BY o.OrderTime DESC`,
+      );
+    } else {
+      // Client sees only their orders
+      [orders] = await pool.query<OrderRow[]>(
+        `SELECT o.OrderID, o.UserID, o.OrderTime, o.TotalPrice, o.Status, p.Name
+         FROM orders o
+         LEFT JOIN profiles p ON o.UserID = p.UserID
+         WHERE o.UserID = ?
+         ORDER BY o.OrderTime DESC`,
+        [payload.UserID],
+      );
+    }
+
+    // Fetch order details for each order
+    const ordersWithDetails = await Promise.all(
+      orders.map(async (order) => {
+        const [details] = await pool.query<OrderDetailRow[]>(
+          `SELECT od.Order_DetailsID, od.OrderID, od.ItemID, od.Quantity, od.UnitPrice, i.Name as ItemName
+           FROM order_details od
+           LEFT JOIN items i ON od.ItemID = i.ItemID
+           WHERE od.OrderID = ?`,
+          [order.OrderID],
+        );
+
+        return {
+          id: String(order.OrderID),
+          OrderID: order.OrderID,
+          UserID: order.UserID,
+          userName: order.Name,
+          createdAt: order.OrderTime,
+          total: parseFloat(String(order.TotalPrice)),
+          status: order.Status,
+          items: details.map((d) => ({
+            menuItemId: String(d.ItemID),
+            title: d.ItemName,
+            price: parseFloat(String(d.UnitPrice)),
+            quantity: d.Quantity,
+          })),
+        };
+      }),
+    );
+
+    return NextResponse.json({
       success: true,
-      data: [],
-      example: {
-        order: {
-          OrderID: 1,
-          UserID: 1,
-          OrderDate: '2024-01-15T10:30:00Z',
-          Status: 'Active',
-          TotalAmount: 45.98,
-        },
-        items: [
-          {
-            OrderDetailID: 1,
-            OrderID: 1,
-            ItemID: 1,
-            Quantity: 2,
-            UnitPrice: 14.99,
-          }
-        ]
-      }
+      data: { orders: ordersWithDetails },
     });
   } catch (error) {
-    return Response.json(
-      { success: false, error: 'Failed to fetch orders' },
-      { status: 500 }
+    console.error("Failed to fetch orders:", error);
+    return NextResponse.json(
+      { success: false, error: "Failed to fetch orders" },
+      { status: 500 },
     );
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    const token = request.cookies.get("auth-token")?.value;
+    if (!token) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 },
+      );
+    }
+
+    const payload = verifyToken(token);
+    if (!payload) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 },
+      );
+    }
+
     const body = await request.json();
-    
-    // TODO: Implement order creation with database transaction
-    // 1. Get current UserID from session/JWT
-    // 2. Validate required fields: items (array of {ItemID, Quantity})
-    // 3. Calculate TotalAmount from items
-    // 4. INSERT INTO Orders (UserID, OrderDate, Status, TotalAmount)
-    //    VALUES (?, NOW(), 'Active', ?)
-    // 5. For each item, INSERT INTO OrderDetails (OrderID, ItemID, Quantity, UnitPrice)
-    // 6. Return created order with OrderID
-    
-    const { items } = body; // Array of {ItemID, Quantity}
-    
+    const { items } = body; // Array of { ItemID, Quantity, UnitPrice }
+
     if (!items || !Array.isArray(items) || items.length === 0) {
-      return Response.json(
-        { success: false, error: 'items array is required and must not be empty' },
-        { status: 400 }
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Items array is required and must not be empty",
+        },
+        { status: 400 },
       );
     }
-    
-    // Validate each item has ItemID and Quantity
-    const validItems = items.every(item => item.ItemID && item.Quantity);
+
+    const validItems = items.every(
+      (item) => item.ItemID && item.Quantity && item.UnitPrice,
+    );
     if (!validItems) {
-      return Response.json(
-        { success: false, error: 'Each item must have ItemID and Quantity' },
-        { status: 400 }
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Each item must have ItemID, Quantity, and UnitPrice",
+        },
+        { status: 400 },
       );
     }
-    
-    return Response.json(
+
+    // Calculate total
+    const totalPrice = items.reduce(
+      (sum: number, item: any) => sum + item.UnitPrice * item.Quantity,
+      0,
+    );
+
+    // Insert order
+    const [orderResult] = await pool.query<ResultSetHeader>(
+      "INSERT INTO orders (UserID, TotalPrice, Status) VALUES (?, ?, ?)",
+      [payload.UserID, totalPrice, "Active"],
+    );
+
+    const orderID = orderResult.insertId;
+
+    // Insert order details
+    for (const item of items) {
+      await pool.query(
+        "INSERT INTO order_details (OrderID, ItemID, Quantity, UnitPrice) VALUES (?, ?, ?, ?)",
+        [orderID, item.ItemID, item.Quantity, item.UnitPrice],
+      );
+    }
+
+    return NextResponse.json(
       {
         success: true,
-        message: 'Order created successfully',
+        message: "Order created successfully",
         data: {
-          OrderID: null, // Will be set by database
-          UserID: null, // Will be set from current user
-          OrderDate: new Date().toISOString(),
-          Status: 'Active',
-          TotalAmount: null, // Will be calculated
-          items: items
-        }
+          order: {
+            OrderID: orderID,
+            UserID: payload.UserID,
+            Status: "Active",
+            TotalPrice: totalPrice,
+          },
+        },
       },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error) {
-    return Response.json(
-      { success: false, error: 'Failed to create order' },
-      { status: 500 }
+    console.error("Failed to create order:", error);
+    return NextResponse.json(
+      { success: false, error: "Failed to create order" },
+      { status: 500 },
     );
   }
 }

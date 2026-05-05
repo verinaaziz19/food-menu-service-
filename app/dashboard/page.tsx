@@ -11,33 +11,37 @@ export default function DashboardPage() {
   const { user, cart } = useAuth();
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
   const [showCartModal, setShowCartModal] = useState(false);
-  const [menuItems, setMenuItems] = useState([]);
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchMenuItems = async () => {
-      try {
-        const res = await fetch("/api/menu", { credentials: "include" });
-        const data = await res.json();
-        if (data.success) {
-          const mapped = data.data.items.map((item: any) => ({
-            id: String(item.ItemID),
-            title: item.Name,
-            description: item.Description,
-            price: parseFloat(item.Price),
-            category: item.Category,
-            available: item.Availability === 1,
-            image: item.Image ? `/images/${item.Image}` : "",
-          }));
-          setMenuItems(mapped);
-        }
-      } catch (error) {
-        console.error("Failed to fetch menu items:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  const fetchMenuItems = async () => {
+    try {
+      const res = await fetch(
+        user?.role === "employee" ? "/api/menu?showAll=true" : "/api/menu",
+        { credentials: "include" },
+      );
 
+      const data = await res.json();
+      if (data.success) {
+        const mapped = data.data.items.map((item: any) => ({
+          id: String(item.ItemID),
+          title: item.Name,
+          description: item.Description,
+          price: parseFloat(item.Price),
+          category: item.Category,
+          available: item.Availability === 1,
+          image: item.Image ? `/images/${item.Image}` : "",
+        }));
+        setMenuItems(mapped);
+      }
+    } catch (error) {
+      console.error("Failed to fetch menu items:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchMenuItems();
   }, []);
 
@@ -58,7 +62,6 @@ export default function DashboardPage() {
             </p>
           </div>
 
-          {/* Menu Grid */}
           <div className="mb-8">
             {isLoading ? (
               <p className="text-amber-700">Loading menu...</p>
@@ -67,11 +70,11 @@ export default function DashboardPage() {
                 items={menuItems}
                 isEmployee={user.role === "employee"}
                 onSelectItem={setSelectedItem}
+                onItemAdded={fetchMenuItems}
               />
             )}
           </div>
 
-          {/* Place Order Modal - shows when items are selected for clients and showCartModal is true */}
           {user.role === "client" && cart.length > 0 && showCartModal && (
             <PlaceOrderModal
               cartItems={cart}
@@ -79,7 +82,6 @@ export default function DashboardPage() {
             />
           )}
 
-          {/* Show cart button when items are in cart but modal is hidden */}
           {user.role === "client" && cart.length > 0 && !showCartModal && (
             <div className="fixed bottom-8 right-8">
               <button

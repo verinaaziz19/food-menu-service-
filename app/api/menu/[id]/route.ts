@@ -1,108 +1,149 @@
-// API Route for individual menu item management
-// GET /api/menu/[id] - fetch a specific menu item
-// PUT /api/menu/[id] - update a menu item (employee only)
-// DELETE /api/menu/[id] - delete a menu item (employee only)
+import { NextRequest, NextResponse } from "next/server";
+import pool from "@/lib/db";
+import { verifyToken } from "@/lib/jwt";
+import { RowDataPacket } from "mysql2";
+
+interface ItemRow extends RowDataPacket {
+  ItemID: number;
+  Name: string;
+  Description: string;
+  Price: number;
+  Category: string;
+  Availability: number;
+  Image: string;
+}
 
 export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
-    
-    // TODO: Implement database query
-    // SELECT ItemID, ItemName, Description, Price, Category, IsAvailable, CreatedBy, CreatedAt
-    // FROM MenuItems
-    // WHERE ItemID = ?
-    
-    return Response.json({
-      success: true,
-      data: {
-        ItemID: id,
-        ItemName: null,
-        Description: null,
-        Price: null,
-        Category: null,
-        IsAvailable: 1,
-        CreatedBy: null,
-        CreatedAt: null,
-      }
-    });
+
+    const [items] = await pool.query<ItemRow[]>(
+      "SELECT ItemID, Name, Description, Price, Category, Availability, Image FROM items WHERE ItemID = ?",
+      [id],
+    );
+
+    if (!items || items.length === 0) {
+      return NextResponse.json(
+        { success: false, error: "Item not found" },
+        { status: 404 },
+      );
+    }
+
+    return NextResponse.json({ success: true, data: { item: items[0] } });
   } catch (error) {
-    return Response.json(
-      { success: false, error: 'Failed to fetch menu item' },
-      { status: 500 }
+    console.error("Failed to fetch menu item:", error);
+    return NextResponse.json(
+      { success: false, error: "Failed to fetch menu item" },
+      { status: 500 },
     );
   }
 }
 
 export async function PUT(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { id } = await params;
-    const body = await request.json();
-    
-    // TODO: Implement with database update
-    // 1. Verify current user is admin (IsAdmin = 1)
-    // 2. UPDATE MenuItems 
-    //    SET ItemName = ?, Description = ?, Price = ?, Category = ?, IsAvailable = ?
-    //    WHERE ItemID = ?
-    // 3. Return updated item
-    
-    const allowedFields = ['ItemName', 'Description', 'Price', 'Category', 'IsAvailable'];
-    const updateData = {};
-    
-    allowedFields.forEach(field => {
-      if (body[field] !== undefined) {
-        updateData[field] = body[field];
-      }
-    });
-    
-    if (Object.keys(updateData).length === 0) {
-      return Response.json(
-        { success: false, error: 'No valid fields to update' },
-        { status: 400 }
+    // Verify employee auth
+    const token = request.cookies.get("auth-token")?.value;
+    if (!token) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 },
       );
     }
-    
-    return Response.json({
+
+    const payload = verifyToken(token);
+    if (!payload || payload.IsAdmin !== 1) {
+      return NextResponse.json(
+        { success: false, error: "Forbidden" },
+        { status: 403 },
+      );
+    }
+
+    const { id } = await params;
+    const body = await request.json();
+    const { Name, Description, Price, Category, Image, Availability } = body;
+
+    if (!Name || !Description || !Price) {
+      return NextResponse.json(
+        { success: false, error: "Name, Description, and Price are required" },
+        { status: 400 },
+      );
+    }
+
+    await pool.query(
+      "UPDATE items SET Name = ?, Description = ?, Price = ?, Category = ?, Image = ?, Availability = ? WHERE ItemID = ?",
+      [
+        Name,
+        Description,
+        Price,
+        Category || "",
+        Image || "",
+        Availability ?? 1,
+        id,
+      ],
+    );
+
+    return NextResponse.json({
       success: true,
-      message: 'Menu item updated',
+      message: "Menu item updated",
       data: {
-        ItemID: id,
-        ...updateData
-      }
+        item: {
+          ItemID: id,
+          Name,
+          Description,
+          Price,
+          Category,
+          Image,
+          Availability,
+        },
+      },
     });
   } catch (error) {
-    return Response.json(
-      { success: false, error: 'Failed to update menu item' },
-      { status: 500 }
+    console.error("Failed to update menu item:", error);
+    return NextResponse.json(
+      { success: false, error: "Failed to update menu item" },
+      { status: 500 },
     );
   }
 }
 
 export async function DELETE(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    // Verify employee auth
+    const token = request.cookies.get("auth-token")?.value;
+    if (!token) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 },
+      );
+    }
+
+    const payload = verifyToken(token);
+    if (!payload || payload.IsAdmin !== 1) {
+      return NextResponse.json(
+        { success: false, error: "Forbidden" },
+        { status: 403 },
+      );
+    }
+
     const { id } = await params;
-    
-    // TODO: Implement with database deletion
-    // 1. Verify current user is admin (IsAdmin = 1)
-    // 2. DELETE FROM MenuItems WHERE ItemID = ?
-    // 3. Or alternatively, set IsAvailable = 0 instead of hard delete
-    
-    return Response.json({
-      success: true,
-      message: `Menu item ${id} deleted`
-    });
+
+    await pool.query("DELETE FROM items WHERE ItemID = ?", [id]);
+
+    return NextResponse.json({ success: true, message: "Menu item deleted" });
   } catch (error) {
-    return Response.json(
-      { success: false, error: 'Failed to delete menu item' },
-      { status: 500 }
+    console.error("Failed to delete menu item:", error);
+    return NextResponse.json(
+      { success: false, error: "Failed to delete menu item" },
+      { status: 500 },
     );
   }
 }

@@ -1,18 +1,24 @@
-'use client';
+"use client";
 
-import { MenuItem, useAuth } from '@/lib/auth-context';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { useState } from 'react';
-import { EmployeeMenuActions } from './employee-menu-actions';
+import { MenuItem, useAuth } from "@/lib/auth-context";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { useState } from "react";
+import { EmployeeMenuActions } from "./employee-menu-actions";
 
 interface MenuGridProps {
   items: MenuItem[];
   isEmployee: boolean;
   onSelectItem?: (item: MenuItem) => void;
+  onItemAdded?: () => void;
 }
 
-export function MenuGrid({ items, isEmployee, onSelectItem }: MenuGridProps) {
+export function MenuGrid({
+  items,
+  isEmployee,
+  onSelectItem,
+  onItemAdded,
+}: MenuGridProps) {
   const { addToCart, deleteMenuItem, updateMenuItem, addMenuItem } = useAuth();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -32,7 +38,7 @@ export function MenuGrid({ items, isEmployee, onSelectItem }: MenuGridProps) {
             onClick={() => setShowAddForm(!showAddForm)}
             className="bg-green-600 hover:bg-green-700 text-white"
           >
-            {showAddForm ? 'Cancel' : '+ Add New Item'}
+            {showAddForm ? "Cancel" : "+ Add New Item"}
           </Button>
         </div>
       )}
@@ -40,8 +46,9 @@ export function MenuGrid({ items, isEmployee, onSelectItem }: MenuGridProps) {
       {isEmployee && showAddForm && (
         <EmployeeMenuActions
           mode="create"
-          onSave={(item) => {
-            addMenuItem(item);
+          onSave={async (item) => {
+            await addMenuItem(item);
+            onItemAdded?.();
             setShowAddForm(false);
           }}
           onCancel={() => setShowAddForm(false)}
@@ -53,10 +60,9 @@ export function MenuGrid({ items, isEmployee, onSelectItem }: MenuGridProps) {
           <Card
             key={item.id}
             className={`overflow-hidden shadow-lg hover:shadow-xl transition border-2 ${
-              isEmployee ? 'border-amber-200' : 'border-amber-100'
-            } ${editingId === item.id ? 'ring-2 ring-amber-500' : ''}`}
+              isEmployee ? "border-amber-200" : "border-amber-100"
+            } ${editingId === item.id ? "ring-2 ring-amber-500" : ""}`}
           >
-            {/* Image */}
             <div className="relative h-48 bg-gray-200 overflow-hidden">
               <img
                 src={item.image}
@@ -75,41 +81,51 @@ export function MenuGrid({ items, isEmployee, onSelectItem }: MenuGridProps) {
                 <EmployeeMenuActions
                   mode="edit"
                   item={item}
-                  onSave={(updatedItem) => {
-                    updateMenuItem(item.id, updatedItem);
+                  onSave={async (updatedItem) => {
+                    await updateMenuItem(item.id!, updatedItem);
+                    onItemAdded?.();
                     setEditingId(null);
                   }}
                   onCancel={() => setEditingId(null)}
                 />
               ) : (
                 <>
-                  <h3 className="text-lg font-bold text-amber-900 mb-1">{item.title}</h3>
-                  <p className="text-sm text-amber-700 mb-3">{item.description}</p>
+                  <h3 className="text-lg font-bold text-amber-900 mb-1">
+                    {item.title}
+                  </h3>
+                  <p className="text-sm text-amber-700 mb-3">
+                    {item.description}
+                  </p>
 
                   <div className="flex items-center justify-between mb-4">
-                    <span className="text-2xl font-bold text-amber-600">${item.price.toFixed(2)}</span>
+                    <span className="text-2xl font-bold text-amber-600">
+                      ${item.price?.toFixed(2)}
+                    </span>
                     <span
                       className={`text-xs font-semibold px-2 py-1 rounded-full ${
                         item.available
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-red-100 text-red-700'
+                          ? "bg-green-100 text-green-700"
+                          : "bg-red-100 text-red-700"
                       }`}
                     >
-                      {item.available ? 'Available' : 'Out of Stock'}
+                      {item.available ? "Available" : "Out of Stock"}
                     </span>
                   </div>
 
                   {isEmployee ? (
                     <div className="flex gap-2">
                       <Button
-                        onClick={() => setEditingId(item.id)}
+                        onClick={() => setEditingId(item.id!)}
                         className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
                         size="sm"
                       >
                         Edit
                       </Button>
                       <Button
-                        onClick={() => deleteMenuItem(item.id)}
+                        onClick={async () => {
+                          await deleteMenuItem(item.id!);
+                          onItemAdded?.();
+                        }}
                         className="flex-1 bg-red-600 hover:bg-red-700 text-white"
                         size="sm"
                       >
@@ -122,11 +138,11 @@ export function MenuGrid({ items, isEmployee, onSelectItem }: MenuGridProps) {
                       disabled={!item.available}
                       className={`w-full ${
                         item.available
-                          ? 'bg-amber-600 hover:bg-amber-700'
-                          : 'bg-gray-400'
+                          ? "bg-amber-600 hover:bg-amber-700"
+                          : "bg-gray-400"
                       } text-white`}
                     >
-                      {item.available ? 'Select' : 'Out of Stock'}
+                      {item.available ? "Select" : "Out of Stock"}
                     </Button>
                   )}
                 </>

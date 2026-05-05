@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
-import pool from '@/lib/db';
-import { verifyToken } from '@/lib/jwt';
-import { RowDataPacket, ResultSetHeader } from 'mysql2';
+import { NextRequest, NextResponse } from "next/server";
+import pool from "@/lib/db";
+import { verifyToken } from "@/lib/jwt";
+import { RowDataPacket, ResultSetHeader } from "mysql2";
 
 interface ItemRow extends RowDataPacket {
   ItemID: number;
@@ -13,69 +13,87 @@ interface ItemRow extends RowDataPacket {
   Image: string;
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url);
+    const showAll = searchParams.get("showAll") === "true";
+
     const [items] = await pool.query<ItemRow[]>(
-      'SELECT ItemID, Name, Description, Price, Category, Availability, Image FROM items WHERE Availability = 1 ORDER BY Category, Name'
+      showAll
+        ? "SELECT ItemID, Name, Description, Price, Category, Availability, Image FROM items ORDER BY Category, Name"
+        : "SELECT ItemID, Name, Description, Price, Category, Availability, Image FROM items WHERE Availability = 1 ORDER BY Category, Name",
     );
 
     return NextResponse.json({ success: true, data: { items } });
   } catch (error) {
-    console.error('Failed to fetch menu items:', error);
+    console.error("Failed to fetch menu items:", error);
     return NextResponse.json(
-      { success: false, error: 'Failed to fetch menu items' },
-      { status: 500 }
+      { success: false, error: "Failed to fetch menu items" },
+      { status: 500 },
     );
   }
 }
-
 export async function POST(request: NextRequest) {
   try {
     // Verify employee auth
-    const token = request.cookies.get('auth-token')?.value;
+    const token = request.cookies.get("auth-token")?.value;
     if (!token) {
-      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 },
+      );
     }
 
     const payload = verifyToken(token);
     if (!payload || payload.IsAdmin !== 1) {
-      return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
+      return NextResponse.json(
+        { success: false, error: "Forbidden" },
+        { status: 403 },
+      );
     }
 
     const body = await request.json();
-    const { Name, Description, Price, Category, Image } = body;
+    const { Name, Description, Price, Category, Image, Availability } = body;
 
     // Validate required fields
-    if (!Name || !Description || !Price || !Category) {
+    if (!Name || !Description || !Price) {
       return NextResponse.json(
-        { success: false, error: 'Name, Description, Price, and Category are required' },
-        { status: 400 }
+        {
+          success: false,
+          error: "Name, Description, Price are required",
+        },
+        { status: 400 },
       );
     }
 
     const [result] = await pool.query<ResultSetHeader>(
-      'INSERT INTO items (Name, Description, Price, Category, Availability, Image) VALUES (?, ?, ?, ?, 1, ?)',
-      [Name, Description, Price, Category, Image || '']
+      "INSERT INTO items (Name, Description, Price, Category, Availability, Image) VALUES (?, ?, ?, ?, ?, ?)",
+      [Name, Description, Price, Category, Availability, Image || ""],
     );
 
-    return NextResponse.json({
-      success: true,
-      message: 'Menu item created',
-      data: {
-        item: {
-          ItemID: result.insertId,
-          Name, Description, Price, Category,
-          Availability: 1,
-          Image: Image || '',
-        }
-      }
-    }, { status: 201 });
-
-  } catch (error) {
-    console.error('Failed to create menu item:', error);
     return NextResponse.json(
-      { success: false, error: 'Failed to create menu item' },
-      { status: 500 }
+      {
+        success: true,
+        message: "Menu item created",
+        data: {
+          item: {
+            ItemID: result.insertId,
+            Name,
+            Description,
+            Price,
+            Category,
+            Availability: 1,
+            Image: Image || "",
+          },
+        },
+      },
+      { status: 201 },
+    );
+  } catch (error) {
+    console.error("Failed to create menu item:", error);
+    return NextResponse.json(
+      { success: false, error: "Failed to create menu item" },
+      { status: 500 },
     );
   }
 }
